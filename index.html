@@ -253,6 +253,101 @@
     const COLORS = ['#ef4444','#f59e0b','#84cc16','#10b981','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#f43f5e','#14b8a6'];
     const LEAGUE_EMOJIS = ['⚽','🍺','👔','👨‍👩‍👧','🔥','🎯','⭐','🏆','🎲','🤝','🚀','💼','🎪','🎉','🦁','🐉'];
 
+    // Official FIFA 2026 schedule — kickoff times in UTC (ET = UTC-4 in June/July)
+    const KICKOFFS = {
+      // Group A
+      g_A_1: '2026-06-11T19:00:00Z', g_A_2: '2026-06-12T02:00:00Z',
+      g_A_3: '2026-06-19T01:00:00Z', g_A_4: '2026-06-18T16:00:00Z',
+      g_A_5: '2026-06-25T01:00:00Z', g_A_6: '2026-06-25T01:00:00Z',
+      // Group B
+      g_B_1: '2026-06-12T19:00:00Z', g_B_2: '2026-06-13T19:00:00Z',
+      g_B_3: '2026-06-18T22:00:00Z', g_B_4: '2026-06-18T19:00:00Z',
+      g_B_5: '2026-06-24T19:00:00Z', g_B_6: '2026-06-24T19:00:00Z',
+      // Group C
+      g_C_1: '2026-06-13T22:00:00Z', g_C_2: '2026-06-14T01:00:00Z',
+      g_C_3: '2026-06-20T01:00:00Z', g_C_4: '2026-06-19T22:00:00Z',
+      g_C_5: '2026-06-24T22:00:00Z', g_C_6: '2026-06-24T22:00:00Z',
+      // Group D
+      g_D_1: '2026-06-13T01:00:00Z', g_D_2: '2026-06-13T04:00:00Z',
+      g_D_3: '2026-06-19T19:00:00Z', g_D_4: '2026-06-19T04:00:00Z',
+      g_D_5: '2026-06-26T02:00:00Z', g_D_6: '2026-06-26T02:00:00Z',
+      // Group E
+      g_E_1: '2026-06-14T17:00:00Z', g_E_2: '2026-06-14T23:00:00Z',
+      g_E_3: '2026-06-20T20:00:00Z', g_E_4: '2026-06-21T00:00:00Z',
+      g_E_5: '2026-06-25T20:00:00Z', g_E_6: '2026-06-25T20:00:00Z',
+      // Group F
+      g_F_1: '2026-06-14T20:00:00Z', g_F_2: '2026-06-15T02:00:00Z',
+      g_F_3: '2026-06-20T17:00:00Z', g_F_4: '2026-06-20T04:00:00Z',
+      g_F_5: '2026-06-25T23:00:00Z', g_F_6: '2026-06-25T23:00:00Z',
+      // Group G
+      g_G_1: '2026-06-15T19:00:00Z', g_G_2: '2026-06-16T01:00:00Z',
+      g_G_3: '2026-06-21T19:00:00Z', g_G_4: '2026-06-22T01:00:00Z',
+      g_G_5: '2026-06-27T03:00:00Z', g_G_6: '2026-06-27T03:00:00Z',
+      // Group H
+      g_H_1: '2026-06-15T16:00:00Z', g_H_2: '2026-06-15T22:00:00Z',
+      g_H_3: '2026-06-21T16:00:00Z', g_H_4: '2026-06-21T22:00:00Z',
+      g_H_5: '2026-06-27T00:00:00Z', g_H_6: '2026-06-27T00:00:00Z',
+      // Group I
+      g_I_1: '2026-06-16T19:00:00Z', g_I_2: '2026-06-16T22:00:00Z',
+      g_I_3: '2026-06-22T21:00:00Z', g_I_4: '2026-06-23T00:00:00Z',
+      g_I_5: '2026-06-26T19:00:00Z', g_I_6: '2026-06-26T19:00:00Z',
+      // Group J
+      g_J_1: '2026-06-17T01:00:00Z', g_J_2: '2026-06-16T04:00:00Z',
+      g_J_3: '2026-06-22T17:00:00Z', g_J_4: '2026-06-23T03:00:00Z',
+      g_J_5: '2026-06-28T02:00:00Z', g_J_6: '2026-06-28T02:00:00Z',
+      // Group K
+      g_K_1: '2026-06-17T17:00:00Z', g_K_2: '2026-06-18T02:00:00Z',
+      g_K_3: '2026-06-23T17:00:00Z', g_K_4: '2026-06-24T02:00:00Z',
+      g_K_5: '2026-06-27T23:30:00Z', g_K_6: '2026-06-27T23:30:00Z',
+      // Group L
+      g_L_1: '2026-06-17T20:00:00Z', g_L_2: '2026-06-17T23:00:00Z',
+      g_L_3: '2026-06-23T20:00:00Z', g_L_4: '2026-06-23T23:00:00Z',
+      g_L_5: '2026-06-27T21:00:00Z', g_L_6: '2026-06-27T21:00:00Z',
+      // Round of 32 (16 matches, Jun 28 - Jul 3)
+      r32_1: '2026-06-28T19:00:00Z', r32_2: '2026-06-29T17:00:00Z',
+      r32_3: '2026-06-29T20:30:00Z', r32_4: '2026-06-30T01:00:00Z',
+      r32_5: '2026-06-30T17:00:00Z', r32_6: '2026-06-30T21:00:00Z',
+      r32_7: '2026-07-01T01:00:00Z', r32_8: '2026-07-01T16:00:00Z',
+      r32_9: '2026-07-01T20:00:00Z', r32_10: '2026-07-02T00:00:00Z',
+      r32_11: '2026-07-02T19:00:00Z', r32_12: '2026-07-02T23:00:00Z',
+      r32_13: '2026-07-03T03:00:00Z', r32_14: '2026-07-03T18:00:00Z',
+      r32_15: '2026-07-03T22:00:00Z', r32_16: '2026-07-04T01:30:00Z',
+      // Round of 16 (8 matches, Jul 4-7)
+      r16_1: '2026-07-04T17:00:00Z', r16_2: '2026-07-04T21:00:00Z',
+      r16_3: '2026-07-05T20:00:00Z', r16_4: '2026-07-06T00:00:00Z',
+      r16_5: '2026-07-06T19:00:00Z', r16_6: '2026-07-07T00:00:00Z',
+      r16_7: '2026-07-07T16:00:00Z', r16_8: '2026-07-07T20:00:00Z',
+      // Quarterfinals (4 matches, Jul 9-11)
+      qf_1: '2026-07-09T20:00:00Z', qf_2: '2026-07-10T19:00:00Z',
+      qf_3: '2026-07-11T21:00:00Z', qf_4: '2026-07-12T01:00:00Z',
+      // Semifinals (Jul 14, 15)
+      sf_1: '2026-07-14T19:00:00Z', sf_2: '2026-07-15T19:00:00Z',
+      // Third place + Final
+      tp_1: '2026-07-18T21:00:00Z',
+      final_1: '2026-07-19T19:00:00Z',
+    };
+
+    function formatCountdown(ms) {
+      if (ms <= 0) return null;
+      const s = Math.floor(ms / 1000);
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      if (d > 0) return `${d}j ${h}h`;
+      if (h > 0) return `${h}h${m.toString().padStart(2, '0')}`;
+      return `${m}min`;
+    }
+
+    function formatKickoff(iso) {
+      try {
+        const d = new Date(iso);
+        return d.toLocaleString('fr-FR', {
+          weekday: 'short', day: 'numeric', month: 'short',
+          hour: '2-digit', minute: '2-digit',
+        });
+      } catch (e) { return ''; }
+    }
+
     // ============================================================
     // HELPERS
     // ============================================================
@@ -1123,7 +1218,8 @@
       const groupCount = Object.values(myPreds.matches || {}).filter(p => p.h != null).length;
       const specialCount = Object.values(myPreds.special || {}).filter(v => v).length;
       const upcoming = [...GROUP_MATCHES, ...KO_SHELLS]
-        .filter(m => { const r = tournament.results?.[m.id]; return !r || r.h == null; })
+        .filter(m => { const r = tournament.results?.[m.id]; return (!r || r.h == null) && KICKOFFS[m.id]; })
+        .sort((a, b) => new Date(KICKOFFS[a.id]).getTime() - new Date(KICKOFFS[b.id]).getTime())
         .slice(0, 3);
       const lastC = comments[comments.length - 1];
       const lastUser = lastC && users[lastC.userId];
@@ -1222,18 +1318,26 @@
       const awayId = match.a || ko?.a;
       const hT = homeId ? TEAMS[homeId] : null;
       const aT = awayId ? TEAMS[awayId] : null;
+      const kickoffIso = KICKOFFS[match.id];
       return html`
-        <div class="card" style="margin-bottom:8px;display:flex;align-items:center;gap:10px">
-          <div class="tag" style=${{ background: match.g ? 'var(--emerald)' : 'var(--pink)', color: '#fff' }}>
-            ${match.g ? 'GR. ' + match.g : match.label?.toUpperCase()}
+        <div class="card" style="margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="tag" style=${{ background: match.g ? 'var(--emerald)' : 'var(--pink)', color: '#fff' }}>
+              ${match.g ? 'GR. ' + match.g : match.label?.toUpperCase()}
+            </div>
+            <div style="flex:1;display:flex;align-items:center;gap:8px;font-weight:700;min-width:0">
+              <span style="font-size:18px">${hT?.flag || '?'}</span>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${hT?.name || '???'}</span>
+              <span style="color:#78716c">vs</span>
+              <span style="flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${aT?.name || '???'}</span>
+              <span style="font-size:18px">${aT?.flag || '?'}</span>
+            </div>
           </div>
-          <div style="flex:1;display:flex;align-items:center;gap:8px;font-weight:700">
-            <span style="font-size:18px">${hT?.flag || '?'}</span>
-            <span style="flex:1">${hT?.name || '???'}</span>
-            <span style="color:#78716c">vs</span>
-            <span style="flex:1;text-align:right">${aT?.name || '???'}</span>
-            <span style="font-size:18px">${aT?.flag || '?'}</span>
-          </div>
+          ${kickoffIso && html`
+            <div style="margin-top:4px;font-size:11px;color:#78716c;text-align:center">
+              ⏱ ${formatKickoff(kickoffIso)}
+            </div>
+          `}
         </div>
       `;
     }
@@ -1245,7 +1349,14 @@
       const [tab, setTab] = useState('groups');
       const [groupSel, setGroupSel] = useState('A');
       const [koStage, setKoStage] = useState('r32');
-      const locked = !!activeLeague?.locked;
+      const [now, setNow] = useState(Date.now());
+      const leagueLocked = !!activeLeague?.locked;
+
+      // Tick every 30s so countdowns and auto-locks update without refresh
+      useEffect(() => {
+        const t = setInterval(() => setNow(Date.now()), 30000);
+        return () => clearInterval(t);
+      }, []);
 
       const groupMatches = GROUP_MATCHES.filter(m => m.g === groupSel);
       const koMatches = KO_SHELLS.filter(m => m.stage === koStage);
@@ -1255,7 +1366,7 @@
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
             <span style="font-size:30px">⚽</span>
             <div class="anton" style="font-size:30px;color:var(--cream);text-shadow:3px 3px 0 #000">PRONOS</div>
-            ${locked && html`<div class="tag" style="background:var(--red);color:#fff;margin-left:auto">🔒 VERROUILLÉ</div>`}
+            ${leagueLocked && html`<div class="tag" style="background:var(--red);color:#fff;margin-left:auto">🔒 LIGUE</div>`}
           </div>
 
           <div style="display:flex;gap:0;margin-bottom:12px;background:#000;padding:4px;border-radius:10px;border:var(--border)">
@@ -1274,7 +1385,7 @@
                 }}>GR. ${g}</button>
               `)}
             </div>
-            ${groupMatches.map(m => html`<${PredictionCard} key=${m.id} match=${m} pred=${myPreds.matches?.[m.id]} result=${tournament.results?.[m.id]} locked=${locked} onSet=${(h, a) => setPrediction(m.id, h, a)} />`)}
+            ${groupMatches.map(m => html`<${PredictionCard} key=${m.id} match=${m} pred=${myPreds.matches?.[m.id]} result=${tournament.results?.[m.id]} leagueLocked=${leagueLocked} now=${now} onSet=${(h, a) => setPrediction(m.id, h, a)} />`)}
           `}
 
           ${tab === 'ko' && html`
@@ -1292,29 +1403,51 @@
               <div class="anton" style="color:var(--yellow);font-size:14px">MULTIPLICATEUR ×${KO_MULT[koStage]}</div>
               <div style="color:var(--lime);font-size:12px;margin-top:2px">Les points sont multipliés à ce tour 🔥</div>
             </div>
-            ${koMatches.map(m => html`<${PredictionCard} key=${m.id} match=${m} pred=${myPreds.matches?.[m.id]} result=${tournament.results?.[m.id]} koAssign=${tournament.ko?.[m.id]} locked=${locked} isKo onSet=${(h, a) => setPrediction(m.id, h, a)} mult=${KO_MULT[m.stage]} />`)}
+            ${koMatches.map(m => html`<${PredictionCard} key=${m.id} match=${m} pred=${myPreds.matches?.[m.id]} result=${tournament.results?.[m.id]} koAssign=${tournament.ko?.[m.id]} leagueLocked=${leagueLocked} now=${now} isKo onSet=${(h, a) => setPrediction(m.id, h, a)} mult=${KO_MULT[m.stage]} />`)}
           `}
         </div>
       `;
     }
 
-    function PredictionCard({ match, pred, result, koAssign, locked, isKo, onSet, mult }) {
+    function PredictionCard({ match, pred, result, koAssign, leagueLocked, now, isKo, onSet, mult }) {
       const homeId = match.h || koAssign?.h;
       const awayId = match.a || koAssign?.a;
       const hT = homeId ? TEAMS[homeId] : null;
       const aT = awayId ? TEAMS[awayId] : null;
       const played = result && result.h != null;
       const pts = played && pred ? scoreMatch(pred, result, mult || 1) : null;
-      const cardLocked = locked || played;
+
+      // Lock logic: kickoff time passed OR result entered OR league locked
+      const kickoffIso = KICKOFFS[match.id];
+      const kickoffMs = kickoffIso ? new Date(kickoffIso).getTime() : null;
+      const timeLocked = kickoffMs != null && now >= kickoffMs;
+      const cardLocked = leagueLocked || played || timeLocked;
+
+      // Countdown display when < 48h to kickoff and not yet locked
+      const msToKickoff = kickoffMs != null ? kickoffMs - now : null;
+      const showCountdown = msToKickoff != null && msToKickoff > 0 && msToKickoff < 48 * 3600 * 1000;
+      const countdown = showCountdown ? formatCountdown(msToKickoff) : null;
+      const isImminent = showCountdown && msToKickoff < 2 * 3600 * 1000;
+
+      // Lock reason label
+      let lockBadge = null;
+      if (played) lockBadge = null; // result speaks for itself
+      else if (leagueLocked) lockBadge = { txt: '🔒 LIGUE', bg: 'var(--red)' };
+      else if (timeLocked) lockBadge = { txt: '🔒 MATCH ENGAGÉ', bg: 'var(--red)' };
+      else if (isImminent) lockBadge = { txt: `⏱ ${countdown}`, bg: '#f59e0b' };
+      else if (showCountdown) lockBadge = { txt: `⏱ ${countdown}`, bg: '#a3a3a3' };
 
       return html`
         <div class="card" style=${{
           background: played ? '#fef3c7' : '#fff', marginBottom: '8px',
-          opacity: cardLocked && !played ? 0.7 : 1,
+          opacity: cardLocked && !played ? 0.75 : 1,
         }}>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px">
             ${isKo ? html`<div class="tag" style="background:var(--pink);color:#fff">${match.label?.toUpperCase()} ${mult ? '×' + mult : ''}</div>` : html`<div class="tag" style="background:var(--emerald);color:#fff">GR. ${match.g}</div>`}
-            ${played && pts !== null && html`<div class="anton" style=${{ color: pts > 0 ? 'var(--emerald)' : '#ef4444', fontSize: '14px' }}>${pts > 0 ? '+' + pts : pts} pt</div>`}
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+              ${lockBadge && html`<div class="tag" style=${{ background: lockBadge.bg, color: '#fff' }}>${lockBadge.txt}</div>`}
+              ${played && pts !== null && html`<div class="anton" style=${{ color: pts > 0 ? 'var(--emerald)' : '#ef4444', fontSize: '14px' }}>${pts > 0 ? '+' + pts : pts} pt</div>`}
+            </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <div style="flex:1;display:flex;align-items:center;gap:6px;min-width:0">
@@ -1329,6 +1462,11 @@
               <span style="font-size:22px">${aT?.flag || '⚪'}</span>
             </div>
           </div>
+          ${kickoffIso && !played && html`
+            <div style="margin-top:6px;font-size:11px;color:#78716c;text-align:center;font-family:'DM Sans'">
+              Coup d'envoi : <span style="font-weight:700;color:#0d2818">${formatKickoff(kickoffIso)}</span>
+            </div>
+          `}
           ${played && html`
             <div style="margin-top:8px;padding:6px 10px;background:#fff;border:2px solid #000;border-radius:8px;text-align:center;font-size:12px">
               <span style="font-weight:700">Résultat :</span> <span class="mono" style="font-weight:700">${result.h} – ${result.a}</span>
