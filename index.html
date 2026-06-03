@@ -391,6 +391,17 @@
       }
     };
 
+    // PIN hashing (SHA-256 with salt prefix). Not bulletproof against a
+    // brute force on the DB, but enough to obscure 4-digit PINs from a
+    // casual look at the data — appropriate for a closed friend pool.
+    async function hashPin(pin) {
+      const enc = new TextEncoder();
+      const data = enc.encode('pool2026_salt:' + pin);
+      const buf = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(buf))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
     // ============================================================
     // DATA LAYER — Supabase
     // ============================================================
@@ -645,14 +656,66 @@
       }, [leagueMembers, predictions, tournament, activeLeague]);
 
       // === Actions ===
-      const createProfile = async (name, color) => {
+      const createProfile = async (name, pin, color) => {
+        // Check name uniqueness (case-insensitive)
+        const { data: existing } = await supa.from('users')
+          .select('id').ilike('name', name);
+        if (existing && existing.length > 0) {
+          return { ok: false, msg: 'Ce blaze est déjà pris. Essaye un autre ou connecte-toi.' };
+        }
         const userId = uid();
-        const { error } = await supa.from('users').insert({ id: userId, name, color });
-        if (error) { alert('Erreur: ' + error.message); return; }
+        const pinHash = await hashPin(pin);
+        const { error } = await supa.from('users').insert({
+          id: userId, name, color, pin_hash: pinHash,
+        });
+        if (error) {
+          if (error.code === '23505') return { ok: false, msg: 'Ce blaze est déjà pris.' };
+          return { ok: false, msg: 'Erreur : ' + error.message };
+        }
         const newMe = { userId, name, color, activeLeagueId: null };
         meStorage.set(newMe);
-        setUsers(prev => ({ ...prev, [userId]: { id: userId, name, color } }));
+        setUsers(prev => ({ ...prev, [userId]: { id: userId, name, color, pin_hash: pinHash } }));
         setMe(newMe);
+        return { ok: true };
+      };
+
+      const loginExisting = async (name, pin) => {
+        const { data, error } = await supa.from('users')
+          .select('*').ilike('name', name);
+        if (error || !data || data.length === 0) {
+          return { ok: false, msg: 'Aucun compte avec ce blaze.' };
+        }
+        const u = data[0];
+        if (!u.pin_hash) {
+          return { ok: false, msg: "Ce compte n'a pas de PIN configuré. Connecte-toi sur ton device d'origine pour le configurer." };
+        }
+        const pinHash = await hashPin(pin);
+        if (pinHash !== u.pin_hash) {
+          return { ok: false, msg: 'PIN incorrect.' };
+        }
+        // Find user's leagues to set active one
+        const { data: memberships } = await supa.from('league_members')
+          .select('league_id').eq('user_id', u.id);
+        const lgIds = (memberships || []).map(m => m.league_id);
+        const newMe = {
+          userId: u.id, name: u.name, color: u.color,
+          activeLeagueId: lgIds[0] || null,
+        };
+        meStorage.set(newMe);
+        setMe(newMe);
+        return { ok: true };
+      };
+
+      const setMyPin = async (pin) => {
+        const pinHash = await hashPin(pin);
+        const { error } = await supa.from('users')
+          .update({ pin_hash: pinHash }).eq('id', me.userId);
+        if (error) return { ok: false, msg: 'Erreur : ' + error.message };
+        setUsers(prev => ({
+          ...prev,
+          [me.userId]: { ...prev[me.userId], pin_hash: pinHash },
+        }));
+        return { ok: true };
       };
 
       const createLeague = async (name, emoji) => {
@@ -868,16 +931,23 @@
 
       const myPreds = predictions[me?.userId] || { matches: {}, special: {} };
 
+      // Detect if logged-in user needs to set a PIN (legacy accounts)
+      const meUser = me ? users[me.userId] : null;
+      const needsPin = !!(me && meUser && !meUser.pin_hash);
+
       if (loading) return html`<${LoadingScreen} />`;
-      if (!me) return html`<${ProfileScreen} onCreate=${createProfile} />`;
+      if (!me) return html`<${ProfileScreen} onCreate=${createProfile} onLogin=${loginExisting} />`;
       if (!activeLeague || showHub) {
-        return html`<${LeagueHubScreen}
-          me=${me} users=${users} leagues=${leagues}
-          onCreate=${createLeague}
-          onJoin=${joinLeague}
-          onSelect=${(id) => { switchLeague(id); setShowHub(false); }}
-          onClose=${activeLeague ? () => setShowHub(false) : null}
-        />`;
+        return html`
+          <${LeagueHubScreen}
+            me=${me} users=${users} leagues=${leagues}
+            onCreate=${createLeague}
+            onJoin=${joinLeague}
+            onSelect=${(id) => { switchLeague(id); setShowHub(false); }}
+            onClose=${activeLeague ? () => setShowHub(false) : null}
+          />
+          ${needsPin && html`<${SetPinModal} onSave=${setMyPin} />`}
+        `;
       }
 
       return html`
@@ -906,6 +976,7 @@
             users=${users} toggleAdmin=${toggleAdmin} removeMember=${removeMember}
             me=${me} onClose=${() => setShowAdmin(false)}
           />`}
+          ${needsPin && html`<${SetPinModal} onSave=${setMyPin} />`}
         </div>
       `;
     }
@@ -924,48 +995,174 @@
       `;
     }
 
-    function ProfileScreen({ onCreate }) {
+    function ProfileScreen({ onCreate, onLogin }) {
+      const [mode, setMode] = useState('create'); // create | login
       const [name, setName] = useState('');
+      const [pin, setPin] = useState('');
+      const [pin2, setPin2] = useState('');
       const [color, setColor] = useState(COLORS[Math.floor(Math.random() * COLORS.length)]);
+      const [err, setErr] = useState(null);
       const [busy, setBusy] = useState(false);
+
+      const submit = async () => {
+        setErr(null);
+        if (!name.trim()) { setErr('Renseigne ton blaze'); return; }
+        if (!/^\d{4}$/.test(pin)) { setErr('Le PIN doit faire 4 chiffres'); return; }
+        setBusy(true);
+        let res;
+        if (mode === 'create') {
+          if (pin !== pin2) { setErr('Les PIN ne correspondent pas'); setBusy(false); return; }
+          res = await onCreate(name.trim(), pin, color);
+        } else {
+          res = await onLogin(name.trim(), pin);
+        }
+        setBusy(false);
+        if (!res.ok) setErr(res.msg);
+      };
+
       return html`
         <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
-          <div style="width:100%;max-width:400px">
-            <div style="text-align:center;margin-bottom:24px">
-              <div style="font-size:64px;line-height:1">🏆</div>
-              <div class="anton" style="font-size:54px;color:var(--cream);line-height:0.95;margin-top:8px;text-shadow:4px 4px 0 #000">
+          <div style="width:100%;max-width:420px">
+            <div style="text-align:center;margin-bottom:20px">
+              <div style="font-size:60px;line-height:1">🏆</div>
+              <div class="anton" style="font-size:50px;color:var(--cream);line-height:0.95;margin-top:8px;text-shadow:4px 4px 0 #000">
                 POOL<br/>MONDIAL<br/>2026
               </div>
-              <div style="color:var(--yellow);font-weight:700;margin-top:8px;letter-spacing:1px">
+              <div style="color:var(--yellow);font-weight:700;margin-top:8px;letter-spacing:1px;font-size:13px">
                 48 ÉQUIPES • 104 MATCHS
               </div>
             </div>
+
+            <div style="display:flex;gap:0;margin-bottom:14px;background:#000;padding:4px;border-radius:12px;border:var(--border)">
+              <button onClick=${() => { setMode('create'); setErr(null); }} style=${{
+                flex: 1, background: mode === 'create' ? 'var(--pink)' : 'transparent',
+                color: mode === 'create' ? '#fff' : 'var(--cream)',
+                border: 'none', borderRadius: '8px', padding: '8px 0',
+                fontFamily: 'Anton', fontSize: '13px', letterSpacing: '1px', cursor: 'pointer',
+              }}>➕ CRÉER MON PROFIL</button>
+              <button onClick=${() => { setMode('login'); setErr(null); }} style=${{
+                flex: 1, background: mode === 'login' ? 'var(--pink)' : 'transparent',
+                color: mode === 'login' ? '#fff' : 'var(--cream)',
+                border: 'none', borderRadius: '8px', padding: '8px 0',
+                fontFamily: 'Anton', fontSize: '13px', letterSpacing: '1px', cursor: 'pointer',
+              }}>🔑 ME CONNECTER</button>
+            </div>
+
             <div class="card" style="position:relative;box-shadow:var(--shadow-lg)">
-              <div style="position:absolute;top:-14px;left:20px;background:var(--pink);color:#fff;padding:4px 12px;border:var(--border);border-radius:8px;transform:rotate(-3deg)" class="anton">
-                TON PROFIL
-              </div>
-              <label class="label" style="margin-top:8px">TON BLAZE</label>
+              <label class="label" style="margin-top:0">TON BLAZE</label>
               <input class="input" type="text" value=${name}
                 onInput=${e => setName(e.target.value.slice(0, 20))}
                 placeholder="ex: Marco" autofocus />
-              <label class="label">TA COULEUR</label>
-              <div style="display:flex;flex-wrap:wrap;gap:8px">
-                ${COLORS.map(c => html`
-                  <button key=${c} onClick=${() => setColor(c)} style=${{
-                    width: '36px', height: '36px', background: c,
-                    border: color === c ? '3px solid #000' : '3px solid transparent',
-                    borderRadius: '50%', cursor: 'pointer',
-                    boxShadow: color === c ? '3px 3px 0 #000' : 'none',
-                  }}></button>
-                `)}
-              </div>
-              <button class="big-btn" disabled=${!name.trim() || busy}
-                onClick=${async () => { setBusy(true); await onCreate(name.trim(), color); setBusy(false); }}
-                style=${{ marginTop: '20px', background: name.trim() ? color : '#d4d4d4' }}>
-                CONTINUER →
+
+              <label class="label">${mode === 'create' ? 'CHOISIS UN PIN (4 CHIFFRES)' : 'TON PIN'}</label>
+              <input class="input mono" type="tel" inputmode="numeric" pattern="[0-9]*"
+                value=${pin}
+                onInput=${e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="••••" maxLength="4"
+                style="font-size:24px;letter-spacing:8px;text-align:center;font-weight:700" />
+
+              ${mode === 'create' && html`
+                <label class="label">CONFIRME LE PIN</label>
+                <input class="input mono" type="tel" inputmode="numeric" pattern="[0-9]*"
+                  value=${pin2}
+                  onInput=${e => setPin2(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="••••" maxLength="4"
+                  style="font-size:24px;letter-spacing:8px;text-align:center;font-weight:700" />
+
+                <label class="label">TA COULEUR</label>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                  ${COLORS.map(c => html`
+                    <button key=${c} onClick=${() => setColor(c)} style=${{
+                      width: '36px', height: '36px', background: c,
+                      border: color === c ? '3px solid #000' : '3px solid transparent',
+                      borderRadius: '50%', cursor: 'pointer',
+                      boxShadow: color === c ? '3px 3px 0 #000' : 'none',
+                    }}></button>
+                  `)}
+                </div>
+              `}
+
+              ${err && html`
+                <div style="margin-top:12px;padding:8px 12px;background:#fee2e2;border:2px solid #000;border-radius:8px;font-size:13px;font-weight:700">
+                  ${err}
+                </div>
+              `}
+
+              <button class="big-btn" disabled=${busy}
+                onClick=${submit}
+                style=${{ marginTop: '16px', background: mode === 'create' ? color : 'var(--emerald)' }}>
+                ${mode === 'create' ? 'CRÉER →' : 'CONNEXION →'}
               </button>
-              <div style="margin-top:12px;font-size:12px;color:#78716c;text-align:center">
-                Ensuite tu créeras ou rejoindras une ligue
+
+              <div style="margin-top:10px;font-size:11px;color:#78716c;text-align:center">
+                ${mode === 'create'
+                  ? 'Ton PIN te permettra de te reconnecter depuis n\'importe quel appareil'
+                  : 'Le blaze + PIN que tu as choisis à la création'}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function SetPinModal({ onSave }) {
+      const [pin, setPin] = useState('');
+      const [pin2, setPin2] = useState('');
+      const [err, setErr] = useState(null);
+      const [busy, setBusy] = useState(false);
+
+      const save = async () => {
+        setErr(null);
+        if (!/^\d{4}$/.test(pin)) { setErr('PIN à 4 chiffres'); return; }
+        if (pin !== pin2) { setErr('Les PIN ne correspondent pas'); return; }
+        setBusy(true);
+        const res = await onSave(pin);
+        setBusy(false);
+        if (!res.ok) setErr(res.msg);
+      };
+
+      return html`
+        <div class="modal-bg" style="align-items:center">
+          <div class="modal" style="max-width:420px;border-radius:16px;margin:0 16px">
+            <div style="position:sticky;top:0;background:var(--green);color:var(--cream);padding:14px 16px;border-bottom:var(--border)">
+              <div class="anton" style="font-size:20px">🔐 CONFIGURE TON PIN</div>
+              <div style="font-size:11px;color:var(--yellow);margin-top:2px">
+                Pour pouvoir te reconnecter ailleurs
+              </div>
+            </div>
+            <div style="padding:16px">
+              <div style="font-size:13px;color:#0d2818;margin-bottom:14px">
+                Tu as créé ton profil avant qu'on ait les PIN. Choisis-en un maintenant pour pouvoir te connecter depuis d'autres appareils.
+              </div>
+
+              <label class="label" style="margin-top:0">CHOISIS UN PIN (4 CHIFFRES)</label>
+              <input class="input mono" type="tel" inputmode="numeric" pattern="[0-9]*"
+                value=${pin}
+                onInput=${e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="••••" maxLength="4" autofocus
+                style="font-size:24px;letter-spacing:8px;text-align:center;font-weight:700" />
+
+              <label class="label">CONFIRME LE PIN</label>
+              <input class="input mono" type="tel" inputmode="numeric" pattern="[0-9]*"
+                value=${pin2}
+                onInput=${e => setPin2(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="••••" maxLength="4"
+                style="font-size:24px;letter-spacing:8px;text-align:center;font-weight:700" />
+
+              ${err && html`
+                <div style="margin-top:12px;padding:8px 12px;background:#fee2e2;border:2px solid #000;border-radius:8px;font-size:13px;font-weight:700">
+                  ${err}
+                </div>
+              `}
+
+              <button class="big-btn" disabled=${busy}
+                onClick=${save}
+                style=${{ marginTop: '16px', background: 'var(--emerald)' }}>
+                💾 ENREGISTRER MON PIN
+              </button>
+
+              <div style="margin-top:10px;font-size:11px;color:#78716c;text-align:center">
+                Note-le quelque part — t'en auras besoin pour te reconnecter
               </div>
             </div>
           </div>
